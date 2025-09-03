@@ -42,21 +42,19 @@ jobs:
         npm run test:coverage || npm run test -- --coverage --watchAll=false
         
     - name: SonarQube Scan
-      uses: sonarqube-quality-gate-action@master
+      uses: sonarqube/sonarqube-scan-action@master
       env:
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
       with:
-        scanMetadataReportFile: Result/coverage/sonar-report.json
+        projectBaseDir: ./Result
         
     - name: Quality Gate Check
-      uses: sonarqube-quality-gate-action@master
+      uses: sonarqube/sonarqube-quality-gate-action@master
       env:
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
       timeout-minutes: 5
-      with:
-        scanMetadataReportFile: Result/coverage/sonar-report.json
 
   pull-and-deploy:
     name: Pull Docker Image & Deploy to Production

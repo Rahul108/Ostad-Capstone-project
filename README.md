@@ -1,8 +1,7 @@
-# 🏫 Ostad Student Result Management System – DevOps Practice
+# Ostad Capstone Project - DevOps Pipeline Complete
 
-Hello students!
-
-This project contains the **UI and backend** for a student result management system. Your task is to **set up the backend services (MongoDB, Redis, Mongo Express)**, configure the environment, run seeding, and deploy the backend using PM2.
+## Project Overview
+This repository contains a comprehensive DevOps pipeline implementation for the **Ostad Capstone Project**, featuring complete infrastructure automation, container orchestration, and monitoring solutions.
 
 ---
 

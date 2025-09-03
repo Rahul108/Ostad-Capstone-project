@@ -118,36 +118,98 @@ node seed.js
 
 ## 5️⃣ Useful Backend Endpoints
 
-| Endpoint       | Method | Description                  |
-| -------------- | ------ | ---------------------------- |
-| `/getStudents` | GET    | List all registered students |
-| `/addStudent`  | POST   | Add new student              |
-| `/result/:id`  | GET    | Fetch result by student ID   |
+### 🚦 Getting Started & Deployment
 
----
+#### Prerequisites
+- AWS Account with appropriate permissions
+- Terraform >= 1.5.0
+- Ansible >= 2.15
+- kubectl >= 1.28
+- Docker >= 24.0
 
-## 6️⃣ Notes for Students
+#### Step-by-Step Deployment
 
-- Frontend calls backend via **`VITE_API_BASE_URL=http://localhost:5050`**
-- Backend caching is handled with Redis (`CACHE_TTL=600`)
-- Use **PM2** to keep backend running in production
-- MongoDB and Redis can be **Dockerized** or installed locally
-- Mongo Express is optional but useful for verifying data
+**Step 1: Infrastructure Provisioning**
+```bash
+cd terraform/
+terraform init
+terraform plan -var-file="production.tfvars"
+terraform apply -auto-approve
+```
 
----
+**Step 2: System Configuration**
+```bash
+cd ansible/
+# Health check all nodes
+ansible-playbook -i inventories/production.yml playbooks/healthcheck.yml
 
-## 7️⃣ Recommended Commands
+# Deploy Kubernetes cluster
+ansible-playbook -i inventories/production.yml playbooks/kubernetes.yml
 
-| Task                                       | Command                                      |
-| ------------------------------------------ | -------------------------------------------- |
-| Start frontend                             | `npm run dev`                                |
-| Build frontend                             | `npm run build`                              |
-| Install backend deps                       | `npm install`                                |
-| Run backend via PM2                        | `pm2 start server.js --name "ostad-backend"` |
-| Seed database                              | `node seed.js`                               |
-| Stop backend                               | `pm2 stop ostad-backend`                     |
-| View backend logs                          | `pm2 logs ostad-backend`                     |
-| Start services (Mongo/Redis/Mongo Express) | `docker-compose up -d`                       |
+# Setup monitoring stack
+ansible-playbook -i inventories/production.yml playbooks/monitoring.yml
+```
+
+**Step 3: Container & Application Setup**
+```bash
+# Build application images
+cd Result/
+docker build -t ostad-capstone:dev-latest --build-arg THEME_INDEX=0 .
+docker build -t ostad-capstone:stage-latest --build-arg THEME_INDEX=1 .
+docker build -t ostad-capstone:prod-latest --build-arg THEME_INDEX=2 .
+```
+
+**Step 4: Kubernetes & ArgoCD Deployment**
+```bash
+# Create namespaces
+kubectl apply -f k8s/namespaces/namespaces.yaml
+
+# Install NGINX Ingress Controller
+kubectl apply -f k8s/ingress/nginx-ingress.yaml
+
+# Install ArgoCD
+kubectl create namespace argocd
+kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+kubectl apply -f k8s/argocd/argocd-config.yaml
+
+# Deploy applications via ArgoCD
+kubectl apply -f k8s/argocd/applications.yaml
+
+# Configure ingress rules
+kubectl apply -f k8s/ingress/ingress.yaml
+```
+
+**Step 5: Access & Verification**
+```bash
+# ArgoCD UI access
+kubectl port-forward svc/argocd-server -n argocd 8080:443
+
+# Get ArgoCD admin password
+kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
+
+# Test applications
+curl -H "Host: ostad-capstone-dev.local" http://<INGRESS-IP>/     # Yellow theme
+curl -H "Host: ostad-capstone-stage.local" http://<INGRESS-IP>/   # Blue theme
+curl -H "Host: ostad-capstone-prod.com" http://<INGRESS-IP>/      # Green theme
+```
+
+#### **📖 Comprehensive Deployment Guide**
+**For detailed Step 4 implementation with ArgoCD and upgrade strategies, see:**
+**[KUBERNETES-DEPLOYMENT-GUIDE.md](./KUBERNETES-DEPLOYMENT-GUIDE.md)**
+
+### 🔄 Kubernetes Upgrade Techniques Implemented
+
+1. **Rolling Updates**: Zero-downtime gradual pod replacement
+2. **Blue-Green Deployment**: Complete environment switching with instant rollback
+3. **Canary Deployment**: Traffic-based gradual rollout (20% → 100%)
+
+### 🎯 Multi-Environment Configuration
+
+| Environment | Theme  | Replicas | Domain                     | Git Branch |
+|-------------|--------|----------|----------------------------|------------|
+| Development | Yellow | 3        | ostad-capstone-dev.local   | dev        |
+| Staging     | Blue   | 3        | ostad-capstone-stage.local | stage      |
+| Production  | Green  | 5 + HPA  | ostad-capstone-prod.com    | main       |
 
 ---
 
